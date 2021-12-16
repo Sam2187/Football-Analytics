@@ -1,0 +1,95 @@
+import matplotlib.pyplot as plt
+import requests
+from bs4 import BeautifulSoup 
+import json
+import pandas as pd
+
+base_url = 'https://understat.com/player/'
+player = str(input( 'Enter Player ID: '))
+url = base_url + player
+
+res = requests.get(url)
+soup = BeautifulSoup(res.content,'lxml')
+scripts = soup.find_all('script')
+
+strings = scripts[3].string
+ind_start = strings.index("('")+2
+ind_end = strings.index("')")
+
+json_data = strings[ind_start:ind_end]
+json_data = json_data.encode('utf8').decode('unicode_escape')
+data = json.loads(json_data)
+data
+
+x = []
+y = []
+xg = []
+result = []
+season = []
+
+for index,_ in enumerate(data):
+    for key in data[index]:
+        if key=='X':
+            x.append(data[index][key])
+        if key=='Y':
+            y.append(data[index][key])
+        if key=='xG':
+            xg.append(data[index][key])
+        if key=='result':
+            result.append(data[index][key])
+        if key=='season':
+            season.append(data[index][key])
+
+col_names = ['x','y','xG','result','season']
+df = pd.DataFrame([x, y, xg, result, season], index=col_names)
+df = df.T
+df.to_csv('ronnie.csv')
+
+import sys
+!{sys.executable} -m pip install mplsoccer
+from mplsoccer import VerticalPitch, Pitch 
+from mplsoccer.utils import FontManager
+
+df = pd.read_csv('ronnie.csv')
+
+df['x'] = df['x'] * 100
+df['y'] = df['y'] * 100
+
+df
+
+goals = df[df['result'] == 'Goal']
+goals
+
+#Creating a figure
+fig, ax = plt.subplots(figsize=(12,10))
+
+#Creating a Pitch
+pitch = VerticalPitch(pitch_type = 'opta', pad_bottom=3,  
+                      half=True, pitch_color = 'black', line_color = 'white',
+                      goal_type='box',
+                      goal_alpha=1)
+
+pitch.draw(ax=ax)
+
+
+# plot the shots taken
+sc1 = pitch.scatter(df.x, df.y,
+                    s=(df.xG * 1500) + 100,
+                      edgecolors='white',
+                    linewidth = 3,  
+                    c='grey', 
+                    alpha = 0.8,
+                    marker='o',
+                    ls = 'dashed',
+                    zorder = 2, ax=ax)
+                   
+# plot the goals
+sc2 = pitch.scatter (goals.x, goals.y,
+                     s=(goals.xG * 1800) + 100,
+                    edgecolors='white',
+                    linewidth = 3, 
+                    c='#3AFEFA', 
+                    alpha = 0.8,
+                    marker='o',
+                    ls = 'dashed',
+                    zorder = 2, ax=ax)
