@@ -1,0 +1,78 @@
+import matplotlib.pyplot as plt
+import pandas as pd
+import sys
+!{sys.executable} -m pip install mplsoccer
+from mplsoccer import Pitch, VerticalPitch
+import sys
+!{sys.executable} -m pip install statsbombpy
+from statsbombpy import sb
+sb.competitions()
+
+sb.matches(competition_id = 16, season_id = 21)
+
+df = sb.events (match_id = 18236)
+df.columns
+
+df = df [['id','minute','second','team','location','period','type','pass_outcome','player_id','pass_end_location']]
+df = df[(df['team']=='Barcelona')] 
+df['pass_outcome'] = df['pass_outcome'].fillna('Successful')
+df.head(5)
+
+df = df.astype(str)
+
+df[['x','y']] = df['location'].str.split(expand=True)
+df[['endX','endY']] = df['pass_end_location'].str.split(expand=True)
+
+df['x'] = df['x'].str.strip('[')
+df['x'] = df['x'].str.strip(',')
+df['endX'] = df['endX'].str.strip('[')
+df['endX'] = df['endX'].str.strip(',')
+df['y'] = df['y'].str.strip(']')
+df['endY'] = df['endY'].str.strip(']')
+df = df.astype({"x": float, "y": float, "endX": float, "endY": float})
+
+df = df.drop(columns=['location', 'pass_end_location'])
+df = df.iloc[3:]
+df.head(5)
+
+df['passer'] =df['player_id']
+df['recipient'] =df['player_id'].shift(-1)
+df.head(5)
+
+passes = df[df['type']=='Pass']
+successful = passes[passes['pass_outcome']=='Successful']
+
+df.type.unique()
+
+subs = df[df['type']=='Substitution']
+subs = subs['minute']
+firstSub = subs.min()
+
+firstSub
+
+successful = successful[successful['minute']<firstSub]
+
+average_locations = successful.groupby('passer').agg({'x':['mean'],'y':['mean','count']})
+average_locations.columns = ['x','y','count']
+
+average_locations
+
+pass_between = successful.groupby(['passer','recipient']).id.count().reset_index()
+pass_between.rename({'id':'pass_count'},axis='columns',inplace=True)
+pass_between = pass_between.merge(average_locations,left_on='passer',right_index = True)
+pass_between = pass_between.merge(average_locations,left_on='recipient',right_index = True,suffixes=['','_end'])
+pass_between = pass_between[pass_between['pass_count']>3]
+pass_between
+
+fig, ax = plt.subplots(figsize=(21,14))
+
+pitch = VerticalPitch(pitch_type='statsbomb',pitch_color='black', line_color='white', figsize=(13,8))
+pitch.draw(ax=ax)
+
+arrows = pitch.arrows(1*pass_between.x,1*pass_between.y,1*pass_between.x_end,1*pass_between.y_end,ax=ax,
+                      color='white',width = 3, zorder = 1)
+
+nodes = pitch.scatter(1*average_locations.x,1*average_locations.y, s = 750, edgecolors ='white',color ='#2839A7', ax=ax)
+
+
+
