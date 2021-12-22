@@ -19,7 +19,6 @@ df['pass_outcome'] = df['pass_outcome'].fillna('Successful')
 df.head(5)
 
 df = df.astype(str)
-
 df[['x','y']] = df['location'].str.split(expand=True)
 df[['endX','endY']] = df['pass_end_location'].str.split(expand=True)
 
@@ -47,14 +46,12 @@ df.type.unique()
 subs = df[df['type']=='Substitution']
 subs = subs['minute']
 firstSub = subs.min()
-
 firstSub
 
 successful = successful[successful['minute']<firstSub]
 
 average_locations = successful.groupby('passer').agg({'x':['mean'],'y':['mean','count']})
 average_locations.columns = ['x','y','count']
-
 average_locations
 
 pass_between = successful.groupby(['passer','recipient']).id.count().reset_index()
