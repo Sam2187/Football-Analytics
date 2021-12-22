@@ -1,26 +1,46 @@
+#Tutorial
+
+#First we import all the relevant packages to complete the steps to follow
 import matplotlib.pyplot as plt
 import requests
 from bs4 import BeautifulSoup
 import json
 import pandas as pd
+import sys
+!{sys.executable} -m pip install mplsoccer
+from mplsoccer import VerticalPitch, Pitch 
 
+
+#Here we take the base url, the user then has to imput the ID for the match
+#they want, this means the code is reusable for any match the user wants from
+#the undertat website 
 base_url = 'https://understat.com/match/'
 match = str(input( 'Enter Match ID: '))
 url = base_url + match
 
+
+#Now we scrape the website using beautiful soup, we are looking for everything
+#in the html tags of 'scipt'
 res = requests.get(url)
 soup = BeautifulSoup(res.content,'lxml')
 scripts = soup.find_all('script')
 
+
+#Here we format the incoming data and convert it all to a string type, this
+#helps with the oranisation of the data
 strings = scripts[1].string
 ind_start = strings.index("('")+2
 ind_end = strings.index("')")
 
+
+#Now we convert all the data to a json type so we can later export it
 json_data = strings[ind_start:ind_end]
 json_data = json_data.encode('utf8').decode('unicode_escape')
 data = json.loads(json_data)
 data
 
+
+#We now create variables to filter the data into 
 x = []
 y = []
 xg = []
@@ -28,6 +48,10 @@ team = []
 result = []
 data_away = data ['a']
 
+
+#Here we create a for loop, in this example we run through the away team data
+#and append it to the variables created in the previous section, this code
+#can be changed to home team depending on what data you want
 for index in range (len(data_away)):
   for key in data_away[index]:
     if key=='X':
@@ -41,56 +65,77 @@ for index in range (len(data_away)):
     if key=='result':
       result.append(data_away[index][key])
 
+
+#We now create a dataframe from the data just collected using pandas. Then 
+#we save the dataframe to a csv file which can be exported to any data
+#analysis or visualisation software
 col_names = ['x','y','xg','team','result']
 df = pd.DataFrame([x,y,xg,team,result],index=col_names)
 df= df.T
 df.to_csv('footy.csv')
 
-import sys
-!{sys.executable} -m pip install mplsoccer
-from mplsoccer import VerticalPitch, Pitch 
-from mplsoccer.utils import FontManager
 
+#Now we read the csv we just saved
 df = pd.read_csv('footy.csv')
 
+
+#The x and y columns are multiplied by 100 to fit the pitch coordinates
+#being used in this tutorial
 df['x'] = df['x'] * 100
 df['y'] = df['y'] * 100
 
+
+#This just prints the dataframe we have created to ensure everything
+#is in order
 df
 
+
+#Now we create a seperate dataframe where we segregate the goals from the shots
 goals = df[df['result'] == 'Goal']
 goals
 
-#Creating a figure
+
+#Now we create the figure
 fig, ax = plt.subplots(figsize=(12,10))
 
-#Creating a Pitch
-pitch = VerticalPitch(pitch_type = 'opta', pad_bottom=3,  
-                      half=True, pitch_color = 'black', line_color = 'white',
-                      goal_type='box',
-                      goal_alpha=1)
 
+#Here we create the pitch and the details of it, such as rotation and colour
+pitch = VerticalPitch(pitch_type = 'opta', 
+                      pad_bottom=3, half=True, 
+                      pitch_color = 'black', 
+                      line_color = 'white', 
+                      goal_type='box', 
+                      goal_alpha=1
+                      )
+
+
+#This prints the pitch we have just created
 pitch.draw(ax=ax)
 
 
-# plot the shots taken
+#Now we plot the shots taken, the size of the markers are in relation to the
+#xg size per shot
 sc1 = pitch.scatter(df.x, df.y,
                     s=(df.xg * 1500) + 100,
-                      edgecolors='white',
+                    edgecolors = 'white',
                     linewidth = 3,  
-                    c='grey', 
+                    color= 'grey', 
                     alpha = 0.8,
-                    marker='o',
+                    marker ='o',
                     ls = 'dashed',
-                    zorder = 2, ax=ax)
-                   
-# plot the goals
-sc2 = pitch.scatter (goals.x, goals.y,
-                     s=(goals.xg * 1800) + 100,
-                    edgecolors='white',
+                    zorder = 2, ax=ax
+                    )
+
+
+#Finally we plot the goals, this is done the same way as the previous plot
+#except we use the goals dataframe
+sc2 = pitch.scatter(goals.x, goals.y,
+                    s=(goals.xg * 1800) + 100,
+                    edgecolors = 'white',
                     linewidth = 3, 
                     c='#3AFEFA', 
                     alpha = 0.8,
-                    marker='o',
+                    marker = 'o',
                     ls = 'dashed',
-                    zorder = 2, ax=ax)
+                    zorder = 2, ax=ax
+                    )
