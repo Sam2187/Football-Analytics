@@ -1,0 +1,60 @@
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+import sys
+!{sys.executable} -m pip install mplsoccer
+from mplsoccer import Pitch, VerticalPitch
+import sys
+!{sys.executable} -m pip install statsbombpy
+from statsbombpy import sb
+sb.competitions()
+
+sb.matches(competition_id = 16, season_id = 21)
+
+df = sb.events (match_id = 18236)
+
+df.columns
+
+df = df [['team','player','type','location','pass_end_location','pass_outcome']]
+df = df[(df['team']=='Manchester United') & (df['type']=='Pass')]
+df.head(5)
+
+df['pass_outcome'] = df['pass_outcome'].fillna('Successful')
+
+df['player'].unique()
+
+df = df.query(f"(type == 'Pass') & (pass_outcome not in ['Unknown','Out','Pass Offside','Injury Clearance'])")
+df = df[(df['team']=='Manchester United') & (df['type']=='Pass') & (df['player']=='Rio Ferdinand')].reset_index()
+df.head(5)
+
+df['pass_outcome'].value_counts()
+
+df = df.astype(str)
+
+df[['x','y']] = df['location'].str.split(expand=True)
+df[['endX','endY']] = df['pass_end_location'].str.split(expand=True)
+df.head(5)
+
+df['x'] = df['x'].str.strip('[')
+df['x'] = df['x'].str.strip(',')
+df['endX'] = df['endX'].str.strip('[')
+df['endX'] = df['endX'].str.strip(',')
+df['y'] = df['y'].str.strip(']')
+df['endY'] = df['endY'].str.strip(']')
+df = df.astype({"x": float, "y": float, "endX": float, "endY": float})
+df.head(5)
+
+df = df.drop(columns=['location', 'pass_end_location'])
+
+fig, ax = plt.subplots(figsize=(15,10))
+
+pitch = VerticalPitch(pitch_type='statsbomb',pitch_color='black', line_color='white', figsize=(13,8))
+pitch.draw(ax=ax)
+
+for x in range(len(df['x'])):
+    if df['pass_outcome'][x] == 'Successful':
+        pitch.lines(df['x'][x], df['y'][x], df['endX'][x], df['endY'][x], comet=True, lw=4, ax=ax, color='#87ceeb', alpha=0.7)
+        pitch.scatter(df['endX'][x], df['endY'][x], color='#87ceeb', s=65, ax=ax)
+    if df['pass_outcome'][x] == 'Incomplete':
+        pitch.lines(df['x'][x], df['y'][x], df['endX'][x], df['endY'][x], comet=True, lw=4, ax=ax, color='red', alpha=0.7)
+        pitch.scatter(df['endX'][x], df['endY'][x], color='red', s=65, ax=ax)
